@@ -36,6 +36,7 @@ public class CrawlersServices : ICrawlersServices
         };
     }
 
+    // Recursividade
     async Task CrawlAsync(string url, int depth)
     {
         if (ShouldStopCrawling(depth, url)) return;
