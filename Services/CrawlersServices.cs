@@ -31,7 +31,7 @@ public class CrawlersServices : ICrawlersServices
 
         return new CrawlerResponse
         {
-            LinksFounds = _crawledLinks.Take(maxPagesToSearch),
+            LinksFounds = _crawledLinks.Take(maxPagesToSearch).ToList(),
             MoreLinksFounds = _crawledLinks.Count
         };
     }
@@ -71,7 +71,7 @@ public class CrawlersServices : ICrawlersServices
         if (links == null) return Enumerable.Empty<string>();
         
         return links.Select(link => GetAbsoluteUrl(link.GetAttributeValue("href", string.Empty), baseUrl))
-            .Where(href => !string.IsNullOrEmpty(href));
+            .Where(href => !string.IsNullOrEmpty(href) && IsValidUrl(href));
     }
     
     private string GetAbsoluteUrl(string href, string baseUrl)
@@ -100,5 +100,13 @@ public class CrawlersServices : ICrawlersServices
     private bool ShouldStopCrawling(int depth, string url)
     {
         return _crawledLinks.Count >= _maxPagesToSearch || _visitedUrls.Contains(url) || depth > _maxDepth;
+    }
+    
+    private bool IsValidUrl(string href)
+    {
+        if (!Uri.IsWellFormedUriString(href, UriKind.Absolute)) return false;
+
+        Uri uri = new Uri(href);
+        return uri.Scheme == Uri.UriSchemeHttp || uri.Scheme == Uri.UriSchemeHttps;
     }
 }

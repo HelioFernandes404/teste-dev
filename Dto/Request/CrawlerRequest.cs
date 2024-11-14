@@ -10,7 +10,7 @@ public class CrawlerRequest
     [Url(ErrorMessage = "URL inválida.")]
     public string WebsiteUrl { get; set; }
     
-    [Range(1, 3, ErrorMessage = "O valor deve estar entre 1 e 3.")]
+    [Range(0, 3, ErrorMessage = "O valor deve estar entre 0 e 3.")]
     public int maxDepth { get; set; }
     
     [Range(1, 1000, ErrorMessage = "O valor deve estar entre 1 e 1000.")]
