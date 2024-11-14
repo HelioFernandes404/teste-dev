@@ -1,76 +1,104 @@
 using CrawlerAPI.Interfaces;
 using CrawlerAPI.Model;
+using CrawlerAPI.Model.enums;
 using HtmlAgilityPack;
-using Microsoft.AspNetCore.Mvc;
 
 namespace CrawlerAPI.Services;
 
 public class CrawlersServices : ICrawlersServices
 {
-    static HashSet<string> visitedUrls = new HashSet<string>();
-    private List<string> CrawlersWeb = new List<string>();
-    static int maxDepth = 3;
+    private readonly HttpClient _httpClient;
+    private HashSet<string> _visitedUrls;
+    private List<string> _crawledLinks;
+    private readonly int _maxDepth;
+    private int _maxPagesToSearch;
+
+    public CrawlersServices(HttpClient httpClient)
+    {
+        _httpClient = httpClient;
+        _visitedUrls = new HashSet<string>();
+        _crawledLinks = new List<string>();
+        _maxDepth = (int)SearchDepthEnums.MAX_DEPTH;
+    }
     
     public async Task<CrawlerResponse> GetCrawlWebSite(string startUrl, int depth, int maxPagesToSearch)
     {
-        visitedUrls.Clear(); 
-        CrawlersWeb.Clear();
-        await Crawl(startUrl, 0, maxPagesToSearch);
+        _visitedUrls.Clear();
+        _crawledLinks.Clear();
+        _maxPagesToSearch = maxPagesToSearch;
+        
+        await CrawlAsync(startUrl, depth);
 
         return new CrawlerResponse
         {
-            LinksFounds = CrawlersWeb.Take(maxPagesToSearch).Select(hypelinks => hypelinks),
-            MoreLinksFounds = CrawlersWeb.Count()
+            LinksFounds = _crawledLinks.Take(maxPagesToSearch),
+            MoreLinksFounds = _crawledLinks.Count
         };
     }
 
-    async Task Crawl(string url, int depth, int maxPagesToSearch)
+    async Task CrawlAsync(string url, int depth)
     {
-        // Verifica se o limite de páginas foi atingido antes de qualquer processamento
-        if (CrawlersWeb.Count >= maxPagesToSearch) return;
-
-        // Verifica profundidade e se a URL já foi visitada
-        if (visitedUrls.Contains(url) || depth > maxDepth) return;
-
-        visitedUrls.Add(url);
+        if (ShouldStopCrawling(depth, url)) return;
+        
+        _visitedUrls.Add(url);
 
         try
         {
-            HttpClient client = new HttpClient();
-            
-            var response = await client.GetStringAsync(url);
-            
-            HtmlDocument doc = new HtmlDocument();
-            doc.LoadHtml(response);
-            
-            var links = doc.DocumentNode.SelectNodes("//a[@href]");
+            string pageContent = await GetPageContentAsync(url);
 
-            if (links != null)
+            if (string.IsNullOrEmpty(pageContent)) return;
+    
+            var links = ExtractLinksFromContent(pageContent, url);
+            foreach (var href in links)
             {
-                foreach (var link in links)
-                {
-                    // Verifica o limite de páginas antes de cada nova adição ao CrawlersWeb e saída do loop
-                    if (visitedUrls.Count >= maxPagesToSearch) break;
-
-                    string href = link.GetAttributeValue("href", string.Empty);
-
-                    if (Uri.IsWellFormedUriString(href, UriKind.Relative))
-                    {
-                        Uri baseUri = new Uri(url);
-                        href = new Uri(baseUri, href).ToString();
-                    }
-
-                    Console.WriteLine($"[{depth}] Encontrado link: {href}");
-                    CrawlersWeb.Add(href);
-
-                    // Continua o rastreamento para o próximo link, aumentando a profundidade
-                    await Crawl(href, depth + 1, maxPagesToSearch);
-                }
+                if (_visitedUrls.Count >= _maxPagesToSearch) break;
+                _crawledLinks.Add(href);
+                await CrawlAsync(href, depth + 1);
             }
         }
-        catch (Exception ex)
+        catch (Exception e)
         {
-            Console.WriteLine($"Erro ao acessar a página {url}: {ex.Message}");
+            Console.WriteLine($"Erro ao acessar a página {url}: {e.Message}");
         }
+    }
+
+    private IEnumerable<string> ExtractLinksFromContent(string content, string baseUrl)
+    {
+        HtmlDocument doc = new HtmlDocument();
+        doc.LoadHtml(content);
+        
+        var links = doc.DocumentNode.SelectNodes("//a[@href]");
+        if (links == null) return Enumerable.Empty<string>();
+        
+        return links.Select(link => GetAbsoluteUrl(link.GetAttributeValue("href", string.Empty), baseUrl))
+            .Where(href => !string.IsNullOrEmpty(href));
+    }
+    
+    private string GetAbsoluteUrl(string href, string baseUrl)
+    {
+        if (Uri.IsWellFormedUriString(href, UriKind.Relative))
+        {
+            var baseUri = new Uri(baseUrl);
+            return new Uri(baseUri, href).ToString();
+        }
+        return href;
+    }
+
+    private async Task<string> GetPageContentAsync(string url)
+    {
+        try
+        {
+            return await _httpClient.GetStringAsync(url);
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine($"Erro ao obter o conteúdo da página {url}: {e.Message}");
+            return null;
+        }
+    }
+
+    private bool ShouldStopCrawling(int depth, string url)
+    {
+        return _crawledLinks.Count >= _maxPagesToSearch || _visitedUrls.Contains(url) || depth > _maxDepth;
     }
 }
