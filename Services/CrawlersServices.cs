@@ -1,12 +1,21 @@
 using CrawlerAPI.Interfaces;
+using Microsoft.AspNetCore.Mvc;
 
 namespace CrawlerAPI.Services;
 
 public class CrawlersServices : ICrawlersServices
 {
-
-    public Task<string> Hello()
+    public Task<ActionResult<object>> GetCrawlWebSite(string url)
     {
-        return Task.FromResult("Hello");
+        throw new NotImplementedException();
+        
+        //TODO: 1. Encontrar todos os links da Pagina
+        
+        
+        //TODO: 2. Visitar cada link encontrado
+        //TODO: 3. Repetir o processo para cada nova página
+        //TODO: 4. Retornar todos os links encontrados
+        
+        
     }
 }

@@ -7,13 +7,15 @@ namespace CrawlerAPI.Controllers;
 [Route("api/[controller]")]
 [Produces("application/json")]
 [Consumes("application/json")]
-public class CrawlerController(ICrawlersServices services) : ControllerBase
+public class CrawlerController(ICrawlersServices _services) : ControllerBase
 {
-    [HttpGet]
-    public Task<string> Get()
+
+    [HttpPost]
+    public Task<ActionResult<object>> Crawl(string url)
     {
-        return services.Hello();
+        var result = _services.GetCrawlWebSite(url);
+
+        return result;
     }
-    
     
 }

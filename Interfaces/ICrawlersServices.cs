@@ -1,6 +1,8 @@
+using Microsoft.AspNetCore.Mvc;
+
 namespace CrawlerAPI.Interfaces;
 
 public interface ICrawlersServices
 {
-    Task<string> Hello();
+    Task<ActionResult<object>> GetCrawlWebSite(string url);
 }
