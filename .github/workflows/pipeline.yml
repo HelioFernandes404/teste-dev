@@ -47,8 +47,8 @@ jobs:
       - name: Replace AppSettings
         shell: bash
         run: |
-          sed -i -e 's/@TAG/${{github.sha}}/' docker-compose.yml;
-          cat docker-compose.yml;
+          sed -i -e 's/@TAG/${{github.sha}}/' docker-compose-prod.yml;
+          cat docker-compose-prod.yml;
 
       - name: Build, tag, and push docker image to Amazon ECR Public
         shell: bash
